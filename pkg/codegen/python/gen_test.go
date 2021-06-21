@@ -132,6 +132,13 @@ func TestGeneratePackage(t *testing.T) {
 				filepath.Join("foo_bar", "deeply", "nested", "module", "resource.py"),
 			},
 		},
+		{
+			"Methods",
+			"simple-methods-schema",
+			[]string{
+				filepath.Join("pulumi_example", "foo.py"),
+			},
+		},
 	}
 
 	testDir := filepath.Join("..", "internal", "test", "testdata")
