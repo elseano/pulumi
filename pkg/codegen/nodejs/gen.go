@@ -702,8 +702,66 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "        super(%s.__pulumiType, name, inputs, opts);\n", name)
 	}
 
-	// Finish the class.
 	fmt.Fprintf(w, "    }\n")
+
+	// Generate methods.
+	genMethod := func(method *schema.Method) {
+		methodName := camel(method.Name)
+		fun := method.Function
+
+		// Write the TypeDoc/JSDoc for the data source function.
+		fmt.Fprint(w, "\n")
+		printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), fun.DeprecationMessage, "    ")
+
+		// Now, emit the method signature.
+		var argsig string
+		argsOptional := true
+		if fun.Inputs != nil {
+			for _, p := range fun.Inputs.Properties {
+				if p.IsRequired() {
+					argsOptional = false
+					break
+				}
+			}
+
+			optFlag := ""
+			if argsOptional {
+				optFlag = "?"
+			}
+			argsig = fmt.Sprintf("args%s: %s.%sArgs", optFlag, name, title(method.Name))
+		}
+		var retty string
+		if fun.Outputs == nil {
+			retty = "void"
+		} else {
+			retty = fmt.Sprintf("%s.%sResult", name, title(method.Name))
+		}
+		fmt.Fprintf(w, "    %s(%s): pulumi.Output<%s> {\n", methodName, argsig, retty)
+		if fun.DeprecationMessage != "" {
+			fmt.Fprintf(w, "        pulumi.log.warn(\"%s.%s is deprecated: %s\")\n", name, methodName,
+				fun.DeprecationMessage)
+		}
+
+		// Now simply call the runtime function with the arguments, returning the results.
+		fmt.Fprintf(w, "        return pulumi.runtime.call(\"%s\", {\n", fun.Token)
+		if fun.Inputs != nil {
+			for _, p := range fun.Inputs.Properties {
+				// Pass the argument to the invocation.
+				if p.Name == "__self__" {
+					fmt.Fprintf(w, "            \"%s\": this,\n", p.Name)
+				} else {
+					fmt.Fprintf(w, "            \"%[1]s\": args.%[1]s,\n", p.Name)
+				}
+			}
+		}
+		fmt.Fprintf(w, "        }, this);\n")
+		fmt.Fprintf(w, "    }\n")
+	}
+	for _, method := range r.Methods {
+		genMethod(method)
+	}
+
+	// Finish the class.
 	fmt.Fprintf(w, "}\n")
 
 	// Emit the state type for get methods.
@@ -717,6 +775,41 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	argsComment := fmt.Sprintf("The set of arguments for constructing a %s resource.", name)
 	mod.genPlainType(w, argsType, argsComment, r.InputProperties, true, false, 0)
 
+	// Emit any method types inside a namespace merged with the class, to represent types nested in the class.
+	// https://www.typescriptlang.org/docs/handbook/declaration-merging.html#merging-namespaces-with-classes
+	var hasMethodTypes bool
+	for _, method := range r.Methods {
+		if method.Function.Inputs != nil || method.Function.Outputs != nil {
+			hasMethodTypes = true
+			break
+		}
+	}
+	genMethodTypes := func(method *schema.Method) {
+		fun := method.Function
+		methodName := title(method.Name)
+		if fun.Inputs != nil {
+			inputs := make([]*schema.Property, 0, len(fun.Inputs.InputShape.Properties))
+			for _, p := range fun.Inputs.InputShape.Properties {
+				if p.Name == "__self__" {
+					continue
+				}
+				inputs = append(inputs, p)
+			}
+			mod.genPlainType(w, methodName+"Args", fun.Inputs.Comment, inputs, true, false, 1)
+			fmt.Fprintf(w, "\n")
+		}
+		if fun.Outputs != nil {
+			mod.genPlainType(w, methodName+"Result", fun.Outputs.Comment, fun.Outputs.Properties, false, true, 1)
+			fmt.Fprintf(w, "\n")
+		}
+	}
+	if hasMethodTypes {
+		fmt.Fprintf(w, "\nexport namespace %s {\n", name)
+		for _, method := range r.Methods {
+			genMethodTypes(method)
+		}
+		fmt.Fprintf(w, "}\n")
+	}
 	return nil
 }
 
@@ -1775,7 +1868,9 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackage
 	// from function inputs and outputs, including types that have already been visited.
 	for _, f := range pkg.Functions {
 		mod := getModFromToken(f.Token)
-		mod.functions = append(mod.functions, f)
+		if !f.IsMethod {
+			mod.functions = append(mod.functions, f)
+		}
 		if f.Inputs != nil {
 			visitObjectTypes(f.Inputs.Properties, func(t *schema.ObjectType) {
 				types.details(t).inputType = true
