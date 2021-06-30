@@ -15,6 +15,8 @@
 - Initial support for resource methods (Node.js authoring, Python calling)
   [#7363](https://github.com/pulumi/pulumi/pull/7363)
 
+- [sdk/nodejs] - Support for calling resource methods
+  [#7377](https://github.com/pulumi/pulumi/pull/7377)
 ### Bug Fixes
 
 - [sdk/dotnet] - Fix swallowed nested exceptions with inline program, so they correctly bubble to the consumer.
