@@ -243,7 +243,11 @@ func TestEnumUsage(t *testing.T) {
 			var wg sync.WaitGroup
 			wg.Add(1)
 			pulumi.All(
-				rubberTree.URN(), rubberTree.Container.Material(), rubberTree.Container.Color(), rubberTree.Container.Size(), rubberTree.Type,
+				rubberTree.URN(),
+				rubberTree.Container.Material(),
+				rubberTree.Container.Color(),
+				rubberTree.Container.Size(),
+				rubberTree.Type,
 			).ApplyT(func(all []interface{}) error {
 				urn := all[0].(pulumi.URN)
 				material := all[1].(*string)
@@ -278,7 +282,11 @@ func TestEnumUsage(t *testing.T) {
 			var wg sync.WaitGroup
 			wg.Add(1)
 			pulumi.All(
-				rubberTree.URN(), rubberTree.Container.Material(), rubberTree.Container.Color(), rubberTree.Container.Size(), rubberTree.Type,
+				rubberTree.URN(),
+				rubberTree.Container.Material(),
+				rubberTree.Container.Color(),
+				rubberTree.Container.Size(),
+				rubberTree.Type,
 			).ApplyT(func(all []interface{}) error {
 				urn := all[0].(pulumi.URN)
 				material := all[1].(*string)
@@ -313,7 +321,11 @@ func TestEnumUsage(t *testing.T) {
 			var wg sync.WaitGroup
 			wg.Add(1)
 			pulumi.All(
-				rubberTree.URN(), rubberTree.Container.Material(), rubberTree.Container.Color(), rubberTree.Container.Size(), rubberTree.Type,
+				rubberTree.URN(),
+				rubberTree.Container.Material(),
+				rubberTree.Container.Color(),
+				rubberTree.Container.Size(),
+				rubberTree.Type,
 			).ApplyT(func(all []interface{}) error {
 				urn := all[0].(pulumi.URN)
 				material := all[1].(*string)
